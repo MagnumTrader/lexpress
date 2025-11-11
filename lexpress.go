@@ -1,11 +1,13 @@
 package lexpress
 
 import (
+	"io"
 	"log"
 )
 
 type Token struct {
 	Kind    TokenKind
+	Lexeme  string
 	line    int
 	linePos int
 	byte    int
@@ -74,23 +76,45 @@ func (l *lexer) Peek() *Token {
 
 // Pointers into the string, or should we use a string reader?
 func (l *lexer) takeToken() *Token {
-	if l.bytePos >= len(l.input) {
 
+	// here is where we should handle our lookups
+	r, err := l.NextRune()
+	if err != nil {
+		if err == io.EOF {
+			return &Token{Kind: EOF}
+		} 
 	}
 
-	return nil
+	handler, ok := l.lookup[r]
+	if !ok {
+		log.Printf("No handler for rune %c", r)
+		return nil
+	}
+	
+
+	kind := handler(l)
+
+	token := &Token{
+		Kind:    kind,
+		Lexeme:  l.input[l.tokenStart:l.bytePos],
+		line:    0,
+		linePos: 0,
+		byte:    l.tokenStart,
+	}
+
+	l.tokenStart = l.bytePos
+	return token
 }
 
 func (l *lexer) atEof() bool {
 	return l.bytePos >= len(l.input)
 }
 
-
 func MapRune(r rune, kind TokenKind) LexerOption {
 	return MapRuneFunc(r, func(h LexerHandle) TokenKind { return kind })
 }
 
-func MapRuneFunc(r rune, f LexerHandleFn) LexerOption {
+func MapRuneFunc(r rune, f func(h LexerHandle) TokenKind) LexerOption {
 	return func(l *lexer) {
 		l.expectNotRegistered(r)
 		l.lookup[r] = f

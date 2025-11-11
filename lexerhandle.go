@@ -9,7 +9,9 @@ import (
 // Way of exposing the lexer functionality without exposing the struct itself
 type LexerHandle interface {
 	// Used internally by the lexer, but is also exposed in `LexerHandleFn` for advancing the lexer
-	NextRune() rune
+	NextRune() (rune, error)
+	PeekRune() (rune, error)
+	AdvanceUntil(until rune) error
 }
 
 func (l *lexer) nextRune() (rune, int, error) {
@@ -27,7 +29,7 @@ func (l *lexer) nextRune() (rune, int, error) {
 
 // Used internally by the lexer, but is also exposed in `LexerHandleFn` for advancing the lexer
 func (l *lexer) NextRune() (rune, error) {
-	if l.peekedRune > 0 {
+	if l.peekedRune != 0 {
 		// Reseting Peek
 		r := l.peekedRune
 		l.peekedRune = 0
@@ -42,7 +44,6 @@ func (l *lexer) NextRune() (rune, error) {
 	}
 
 	l.bytePos += size
-	// what about end pos? end pos is about the token
 	return r, nil
 }
 
@@ -52,12 +53,26 @@ func (l *lexer) PeekRune() (rune, error) {
 		return l.peekedRune, nil
 	}
 
-	r, _,  err := l.nextRune()
+	r, _, err := l.nextRune()
 	if err != nil {
 		// eof
-	  return r, err
+		return r, err
 	}
 
 	l.peekedRune = r
 	return r, nil
 }
+
+func (l *lexer) AdvanceUntil(until rune) error {
+	for {
+		r, err := l.NextRune()
+		if err != nil {
+			return err
+		}
+		if r == until {
+			break
+		}
+	}
+	return nil
+}
+
