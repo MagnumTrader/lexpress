@@ -32,6 +32,7 @@ func (l *lexer[T]) Next() *T {
 type LexerHandle interface {
 	NextRune() rune
 }
+
 type LexerHandleFn[T any] = func(h LexerHandle) *T
 type RuneHandler[T any] = func(l *lexer[T])
 
@@ -61,6 +62,7 @@ func RuneToToken[T any](r rune, token T) func(*lexer[T]) {
 func AllRunesToToken[T any](token T, runes ...rune) func(*lexer[T]) {
 	return func(l *lexer[T]) {
 		for _, r := range runes {
+			// TODO: When we collect this token, enrich it with position and line for example?
 			l.register(r, token)
 		}
 	}

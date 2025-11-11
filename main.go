@@ -1,15 +1,13 @@
 package main
 
-import "testinggrounds/lexer"
+import "github.com/MagnumTrader/lexpress/lexer"
 
 type Token struct {
 	value int
 }
 
 func main() {
-	// Alternative is that register take a function, that returns a
-	// and then we have quick token
-	// We move the cursor to where we want, and then the lexer creates the token?
+
 	lex := lexer.NewLexer(
 		lexer.RuneToToken('&', Token{}),
 		lexer.RuneToTokenWith('|', NextEqualElse()),
