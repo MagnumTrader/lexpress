@@ -28,7 +28,7 @@ const (
 func main() {
 
 	lex := lx.NewLexer(
-		lx.RuneToToken('&', MYKIND),
+		lx.MapRune('&', MYKIND),
 	)
 	lex.PrintAll()
 }
