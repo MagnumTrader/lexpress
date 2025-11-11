@@ -1,7 +1,6 @@
 package lexpress
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -16,30 +15,51 @@ type Token struct {
 type TokenKind = int
 
 const (
-	EOF TokenKind = iota -1
+	EOF TokenKind = iota - 1
 )
 
 // A function that should advance until your token end is found
 // returns the kind of token the lexer is currently posititioned at
 type LexerHandleFn = func(h LexerHandle) TokenKind
-type RuneHandler = func(l *lexer)
-
+type LexerOption = func(l *lexer)
 
 type lexer struct {
-	singleRune   map[rune]TokenKind
-	runeFunction map[rune]LexerHandleFn
+	input      string
+	lookup     map[rune]LexerHandleFn
+	peeked     *Token
+	peekedRune rune
+
+	// maybe byte instead
+	bytePos    int
+	tokenStart int
+	tokenEnd   int
+	curLine    int
+	curLinePos int
 }
 
 // Main function used by your parser
 // will cusome runes lazily and produce the next token
-func (l *lexer) Next() Token {
-	panic("Not implemented, should get the next rune, parse it through the registered runes and handle it. returning the Token")
+func (l *lexer) Next() *Token {
+	if l.atEof() {
+		return &Token{
+			Kind:    EOF,
+			line:    l.curLine,
+			linePos: l.curLinePos,
+			byte:    l.bytePos,
+		}
+	}
+
+	return l.takeToken()
 }
 
-func NewLexer(handlers ...RuneHandler) *lexer {
+func NewLexer(input string, handlers ...LexerOption) *lexer {
 	l := &lexer{
-		singleRune:   map[rune]TokenKind{},
-		runeFunction: map[rune]LexerHandleFn{},
+		input:      input,
+		lookup:     map[rune]LexerHandleFn{},
+		peeked:     nil,
+		peekedRune: 0,
+		bytePos:    0,
+		tokenEnd:   1,
 	}
 
 	// register all the routes
@@ -48,50 +68,53 @@ func NewLexer(handlers ...RuneHandler) *lexer {
 	}
 	return l
 }
+func (l *lexer) Peek() *Token {
+	panic("unimplemented")
+}
 
-func MapRune(r rune, kind TokenKind) func(*lexer) {
+// Pointers into the string, or should we use a string reader?
+func (l *lexer) takeToken() *Token {
+	if l.bytePos >= len(l.input) {
+
+	}
+
+	return nil
+}
+
+func (l *lexer) atEof() bool {
+	return l.bytePos >= len(l.input)
+}
+
+
+func MapRune(r rune, kind TokenKind) LexerOption {
+	return MapRuneFunc(r, func(h LexerHandle) TokenKind { return kind })
+}
+
+func MapRuneFunc(r rune, f LexerHandleFn) LexerOption {
 	return func(l *lexer) {
-		l.register(r, kind)
+		l.expectNotRegistered(r)
+		l.lookup[r] = f
 	}
 }
 
-func MapRuneFunc(r rune, f LexerHandleFn) func(*lexer) {
-	return func(l *lexer) {
-		l.registerWith(r, f)
-	}
-}
+// TODO: capture to including the token
+// TODO: capture inside including the token = capture to [1:pos-1]
 
-func MapRunes(kind TokenKind, runes ...rune) func(*lexer) {
-	return func(l *lexer) {
-		for _, r := range runes {
-			l.register(r, kind)
-		}
-	}
-}
-
-func (l lexer) registerWith(r rune, f LexerHandleFn) {
-	_, ok := l.runeFunction[r]
-	_, ok2 := l.singleRune[r]
-	if ok || ok2 {
+func (l *lexer) expectNotRegistered(r rune) {
+	_, ok := l.lookup[r]
+	if ok {
+		// TODO: collect all these errors instead
 		log.Fatalf("Handler for rune: '%c' already exists!", r)
 	}
-	l.runeFunction[r] = f
 }
 
-func (l *lexer) register(r rune, kind TokenKind) {
-	_, ok := l.singleRune[r]
-	_, ok2 := l.runeFunction[r]
-	if ok || ok2 {
-		log.Fatalf("Handler for rune: '%c' already exists!", r)
-	}
-	l.singleRune[r] = kind
-}
-
+// Print all registered routes
 func (l *lexer) PrintAll() {
-	for key, value := range l.singleRune {
-		fmt.Printf("'%c' registered as %v\n", key, value)
-	}
-	for key, value := range l.runeFunction {
-		fmt.Printf("'%c' registered as %v\n", key, value)
-	}
+	//	for key, value := range l.singleRune {
+	//		fmt.Printf("'%c' registered as %v\n", key, value)
+	//	}
+	//
+	//	for key, value := range l.runeFunction {
+	//		fmt.Printf("'%c' registered as %v\n", key, value)
+	//	}
 }
